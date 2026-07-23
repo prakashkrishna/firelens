@@ -1,0 +1,57 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+
+# IntelliJ / Android Studio / IDE
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# Sensitive GCP Service Account Keys & Local Credentials
+# Prevents accidental commits of private GCP Service Account JSON keys to public repositories
+*-key.json
+*credentials*.json
+*service_account*.json
+*service-account*.json
+gcp-key.json
+key.json
+*.pem
+
+# Local Temporary Scripts & Notes
+scratch/
+
+# Flutter / Dart / Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Platform Ephemeral Build Artifacts
+/windows/flutter/ephemeral/
+/macos/Flutter/ephemeral/
+/linux/flutter/ephemeral/
+
+# Symbolication & Obfuscation
+app.*.symbols
+app.*.map.json
+
+# Android Studio artifacts
+/android/app/debug
+/android/app/profile
+/android/app/release
