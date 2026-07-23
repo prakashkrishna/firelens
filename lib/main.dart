@@ -38,7 +38,7 @@ class FirestoreClientApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       scaffoldMessengerKey: globalMessengerKey,
-      title: 'Firestore Client',
+      title: 'FireLens',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: const MainScreen(),

@@ -30,7 +30,7 @@ class AppTitlebar extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    'Firestore Client',
+                    'FireLens',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_client/core/converters/firestore_json_converter.dart';
+import 'package:firelens/core/converters/firestore_json_converter.dart';
 
 void main() {
   group('FirestoreJsonConverter Tests', () {

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_client/models/query_clause.dart';
+import 'package:firelens/models/query_clause.dart';
 
 void main() {
   group('QueryParser Syntax Validation Tests', () {
