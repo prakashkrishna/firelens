@@ -53,6 +53,17 @@ FireLens connects directly to Google Cloud APIs via authenticated HTTP clients, 
 
 ---
 
+## 💾 Download Prebuilt Executable
+
+Download the prebuilt standalone Windows desktop app directly without needing Flutter installed:
+
+👉 **[Download Latest Windows Release (FireLens-Windows-x64.zip)](https://github.com/prakashkrishna/firelens/releases/latest)**
+
+1. Download and extract the `.zip` file.
+2. Double-click `firelens.exe` to launch FireLens!
+
+---
+
 ## 🛠️ Building & Running Locally
 
 > [!NOTE]
@@ -73,7 +84,7 @@ FireLens connects directly to Google Cloud APIs via authenticated HTTP clients, 
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-username/firelens.git
+   git clone https://github.com/prakashkrishna/firelens.git
    cd firelens
    ```
 
