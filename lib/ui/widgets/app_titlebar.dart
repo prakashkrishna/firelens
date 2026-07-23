@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import '../../core/theme/app_theme.dart';
 import '../../state/auth_provider.dart';
+import '../../state/version_provider.dart';
 
 class AppTitlebar extends ConsumerWidget {
   const AppTitlebar({super.key});
@@ -10,6 +11,7 @@ class AppTitlebar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authAsync = ref.watch(authStateProvider);
+    final versionAsync = ref.watch(appVersionProvider);
 
     return Container(
       height: 38,
@@ -35,6 +37,24 @@ class AppTitlebar extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                       color: AppColors.textMain,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: AppColors.borderColor),
+                    ),
+                    child: Text(
+                      'v${versionAsync.valueOrNull ?? "1.0.0"}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textMuted,
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
