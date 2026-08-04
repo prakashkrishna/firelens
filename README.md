@@ -2,6 +2,14 @@
 
 **FireLens** is a fast, modern, and open-source cross-platform Desktop GUI client for **Google Cloud Firestore**. Built with Flutter, FireLens provides database administrators, developers, and DevOps engineers with an intuitive desktop environment to explore, query, edit, and manage Firestore collections and documents effortlessly.
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/3fe5d2ce-8f9b-4e23-b7b8-7e55b8924825" alt="FireLens Document Tree View & Visual Query Builder" width="100%" />
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/4bf7e403-cbce-4d60-9af2-bfb30b7b37e2" alt="FireLens Raw JSON Code Editor in Edit Mode" width="100%" />
+</p>
+
 ---
 
 ## 🏗️ Architecture & Core Packages Used
