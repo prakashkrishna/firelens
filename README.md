@@ -16,8 +16,8 @@
 
 FireLens connects directly to Google Cloud APIs via authenticated HTTP clients, bypassing emulator-only limits of standard Flutter desktop SDKs:
 
-- **🔐 Authentication (`googleapis_auth`)**:
-  - Uses `googleapis_auth` to create authenticated HTTP clients from **Service Account Key JSON** files (`clientViaServiceAccount`) and local **GCP Application Default Credentials (ADC)**.
+- **🔐 Authentication (`googleapis_auth` & `gcloud CLI`)**:
+  - Creates authenticated HTTP clients from **GCP Application Default Credentials (ADC)**, **Service Account Key JSON** files (`clientViaServiceAccount`), and **`gcloud CLI` user logins** (`gcloud auth print-access-token`).
 - **🗂️ Project & Database Discovery (`googleapis`)**:
   - Leverages `googleapis` (Resource Manager API) to list accessible GCP projects and queries the Firestore Admin REST API for database instances (including `(default)` and named databases).
 - **📡 Firestore CRUD & Queries (`http` + Firestore REST API v1)**:
@@ -35,9 +35,11 @@ FireLens connects directly to Google Cloud APIs via authenticated HTTP clients, 
 
 ## ✨ Key Features
 
-### 🔐 Flexible Authentication
+### 🔐 Flexible Authentication & Dropdown Selector
 - **Application Default Credentials (ADC)**: Automatically connects using your local `gcloud auth application-default login` credentials.
+- **gcloud CLI User Login**: Connects directly using your active user account tokens from `gcloud auth login` via CLI subprocess. Includes an in-app button to trigger `gcloud auth login`.
 - **Service Account Key (.json)**: Easily load service account JSON key files to manage projects with specific IAM permissions.
+- **Unified Dropdown & Explicit Connect Button**: Clean dropdown selector displaying actual CLI commands (`gcloud auth application-default login`, `gcloud auth login`) for each option, with explicit **Connect** button control, persistent connection state, and non-intrusive error handling.
 
 ### 🗂️ Project & Database Explorer
 - **Multi-Project Support**: Seamlessly switch between GCP projects.
@@ -143,4 +145,4 @@ flutter test
 
 ## 📄 License
 
-This project is licensed under the **Non-Commercial License** — see the [LICENSE](LICENSE) file for details. Free for personal, educational, and internal developer use; commercial resale or paid distribution is strictly prohibited.
+This project is licensed under the **Apache License 2.0** — see the [LICENSE](LICENSE) file for full details.
