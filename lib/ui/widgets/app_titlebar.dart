@@ -10,6 +10,7 @@ class AppTitlebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isConnected = ref.watch(isConnectedProvider);
     final authAsync = ref.watch(authStateProvider);
     final versionAsync = ref.watch(appVersionProvider);
 
@@ -58,19 +59,13 @@ class AppTitlebar extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  authAsync.when(
-                    data: (res) => Container(
+                  if (!isConnected)
+                    Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: res.isSuccess
-                            ? AppColors.accentGreen.withValues(alpha: 0.15)
-                            : AppColors.accentRed.withValues(alpha: 0.15),
+                        color: AppColors.bgInput,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: res.isSuccess
-                              ? AppColors.accentGreen
-                              : AppColors.accentRed,
-                        ),
+                        border: Border.all(color: AppColors.borderColor),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -79,37 +74,74 @@ class AppTitlebar extends ConsumerWidget {
                             width: 6,
                             height: 6,
                             decoration: BoxDecoration(
-                              color: res.isSuccess
-                                  ? AppColors.accentGreen
-                                  : AppColors.accentRed,
+                              color: AppColors.textMuted,
                               shape: BoxShape.circle,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           Text(
-                            res.isSuccess
-                                ? res.accountEmail
-                                : 'ADC Auth Error',
+                            'Not Connected',
                             style: TextStyle(
-                              color: res.isSuccess
-                                  ? AppColors.accentGreen
-                                  : AppColors.accentRed,
+                              color: AppColors.textMuted,
                               fontSize: 11,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    loading: () => const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.textMuted,
+                    )
+                  else
+                    authAsync.when(
+                      data: (res) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: res.isSuccess
+                              ? AppColors.accentGreen.withValues(alpha: 0.15)
+                              : AppColors.bgInput,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: res.isSuccess
+                                ? AppColors.accentGreen
+                                : AppColors.borderColor,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: res.isSuccess
+                                    ? AppColors.accentGreen
+                                    : AppColors.textMuted,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              res.isSuccess
+                                  ? res.accountEmail
+                                  : 'Not Connected',
+                              style: TextStyle(
+                                color: res.isSuccess
+                                    ? AppColors.accentGreen
+                                    : AppColors.textMuted,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      loading: () => const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      error: (_, _) => const SizedBox.shrink(),
                     ),
-                    error: (_, _) => const SizedBox.shrink(),
-                  ),
                 ],
               ),
             ),

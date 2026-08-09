@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,6 +19,44 @@ import 'add_collection_dialog.dart';
 class SidebarExplorer extends ConsumerWidget {
   const SidebarExplorer({super.key});
 
+  Future<void> _runGcloudLogin(BuildContext context, WidgetRef ref) async {
+    try {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Launching "gcloud auth login"...'),
+          backgroundColor: AppColors.accentBlue,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      final result = await Process.run('gcloud', ['auth', 'login'], runInShell: true);
+      if (result.exitCode == 0) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Successfully authenticated with gcloud CLI! Click Connect.'),
+            backgroundColor: AppColors.accentGreen,
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('gcloud auth login failed: ${result.stderr}'),
+            backgroundColor: AppColors.accentRed,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error running gcloud: $e'),
+            backgroundColor: AppColors.accentRed,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _pickServiceAccountFile(BuildContext context, WidgetRef ref) async {
     try {
       final messenger = ScaffoldMessenger.of(context);
@@ -34,6 +73,7 @@ class SidebarExplorer extends ConsumerWidget {
 
       ref.read(serviceAccountProvider.notifier).state = saModel;
       ref.read(authModeProvider.notifier).state = AuthMode.serviceAccount;
+      ref.read(isConnectedProvider.notifier).state = false;
 
       final saProject = GcpProject(
         projectId: saModel.projectId,
@@ -47,7 +87,7 @@ class SidebarExplorer extends ConsumerWidget {
 
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Loaded Service Account key for project "${saModel.projectId}"!'),
+          content: Text('Loaded Service Account key for project "${saModel.projectId}"! Click Connect to authenticate.'),
           backgroundColor: AppColors.accentGreen,
         ),
       );
@@ -67,6 +107,10 @@ class SidebarExplorer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authMode = ref.watch(authModeProvider);
     final serviceAccount = ref.watch(serviceAccountProvider);
+    final isConnected = ref.watch(isConnectedProvider);
+    final authState = ref.watch(authStateProvider);
+
+    final isSuccessfullyConnected = isConnected && (authState.asData?.value.isSuccess == true);
 
     final projectsAsync = ref.watch(projectsListProvider);
     final selectedProject = ref.watch(selectedProjectProvider);
@@ -102,53 +146,223 @@ class SidebarExplorer extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SegmentedButton<AuthMode>(
-                        style: SegmentedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          selectedBackgroundColor: AppColors.accentBlue,
-                          selectedForegroundColor: Colors.white,
-                          backgroundColor: AppColors.bgInput,
-                          foregroundColor: AppColors.textMuted,
-                          side: const BorderSide(color: AppColors.borderColor),
-                          textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                        segments: const [
-                          ButtonSegment<AuthMode>(
-                            value: AuthMode.adc,
-                            label: Text('ADC'),
-                            icon: Icon(Icons.key, size: 12),
-                          ),
-                          ButtonSegment<AuthMode>(
-                            value: AuthMode.serviceAccount,
-                            label: Text('Service Account'),
-                            icon: Icon(Icons.description, size: 12),
+                DropdownButtonFormField<AuthMode>(
+                  initialValue: authMode,
+                  isExpanded: true,
+                  dropdownColor: AppColors.bgCard,
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMain),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    fillColor: AppColors.bgInput,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(color: AppColors.borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: const BorderSide(color: AppColors.borderColor),
+                    ),
+                  ),
+                  selectedItemBuilder: (BuildContext context) {
+                    return [
+                      const Row(
+                        children: [
+                          Icon(Icons.key, size: 14, color: AppColors.accentBlue),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'ADC (gcloud auth application-default login)',
+                              style: TextStyle(fontSize: 10, overflow: TextOverflow.ellipsis),
+                            ),
                           ),
                         ],
-                        selected: {authMode},
-                        onSelectionChanged: (newSelection) {
-                          final newMode = newSelection.first;
-                          ref.read(authModeProvider.notifier).state = newMode;
-
-                          // Clear selections when switching auth mode
-                          ref.read(selectedProjectProvider.notifier).state = null;
-                          ref.read(selectedDatabaseProvider.notifier).state = null;
-                          ref.read(selectedCollectionProvider.notifier).state = null;
-                          ref.read(selectedDocumentProvider.notifier).state = null;
-                          ref.read(documentsNotifierProvider.notifier).clearAll();
-
-                          if (newMode == AuthMode.serviceAccount && serviceAccount == null) {
-                            _pickServiceAccountFile(context, ref);
-                          }
-                        },
+                      ),
+                      const Row(
+                        children: [
+                          Icon(Icons.terminal, size: 14, color: AppColors.accentBlue),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'gcloud CLI (gcloud auth login)',
+                              style: TextStyle(fontSize: 10, overflow: TextOverflow.ellipsis),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Row(
+                        children: [
+                          Icon(Icons.description, size: 14, color: AppColors.accentBlue),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Service Account (JSON Key)',
+                              style: TextStyle(fontSize: 10, overflow: TextOverflow.ellipsis),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ];
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      value: AuthMode.adc,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 2),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.key, size: 13, color: AppColors.accentBlue),
+                                SizedBox(width: 6),
+                                Text('Application Default Credentials (ADC)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Command: gcloud auth application-default login',
+                              style: TextStyle(fontSize: 9, color: AppColors.textMuted, fontFamily: 'monospace'),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: AuthMode.gcloudCli,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 2),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.terminal, size: 13, color: AppColors.accentBlue),
+                                SizedBox(width: 6),
+                                Text('gcloud CLI User Login', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Command: gcloud auth login',
+                              style: TextStyle(fontSize: 9, color: AppColors.textMuted, fontFamily: 'monospace'),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: AuthMode.serviceAccount,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 2),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.description, size: 13, color: AppColors.accentBlue),
+                                SizedBox(width: 6),
+                                Text('Service Account Key File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Uses: GCP Service Account JSON Key',
+                              style: TextStyle(fontSize: 9, color: AppColors.textMuted),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
+                  onChanged: (newMode) {
+                    if (newMode == null || newMode == authMode) return;
+                    ref.read(authModeProvider.notifier).state = newMode;
+                    ref.read(isConnectedProvider.notifier).state = false;
+
+                    // Clear selections when switching auth mode
+                    ref.read(selectedProjectProvider.notifier).state = null;
+                    ref.read(selectedDatabaseProvider.notifier).state = null;
+                    ref.read(selectedCollectionProvider.notifier).state = null;
+                    ref.read(selectedDocumentProvider.notifier).state = null;
+                    ref.read(documentsNotifierProvider.notifier).clearAll();
+                  },
                 ),
-                if (authMode == AuthMode.serviceAccount) ...[
-                  const SizedBox(height: 6),
+                const SizedBox(height: 6),
+
+                // Dynamic Context View based on selected Auth Mode
+                if (authMode == AuthMode.adc) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgInput,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: AppColors.borderColor),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 12, color: AppColors.textMuted),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Uses system gcloud application-default credentials.',
+                            style: TextStyle(fontSize: 9, color: AppColors.textMuted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (authMode == AuthMode.gcloudCli) ...[
+                  if (!isSuccessfullyConnected) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgInput,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppColors.borderColor),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (isConnected && authState.asData?.value.isSuccess == false) ...[
+                            Text(
+                              authState.asData?.value.errorMessage ?? 'gcloud CLI login required',
+                              style: const TextStyle(fontSize: 9, color: AppColors.accentRed),
+                            ),
+                            const SizedBox(height: 4),
+                          ],
+                          InkWell(
+                            onTap: () => _runGcloudLogin(context, ref),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.login, size: 12, color: AppColors.accentBlue),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Run "gcloud auth login"',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    color: AppColors.accentBlue,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ] else if (authMode == AuthMode.serviceAccount) ...[
                   if (serviceAccount != null) ...[
                     Container(
                       padding: const EdgeInsets.all(6),
@@ -190,23 +404,71 @@ class SidebarExplorer extends ConsumerWidget {
                       ),
                     ),
                   ] else ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.accentBlue),
-                          padding: const EdgeInsets.symmetric(vertical: 6),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isConnected && serviceAccount == null) ...[
+                          const Text(
+                            'Please load a Service Account JSON Key file first.',
+                            style: TextStyle(fontSize: 9, color: AppColors.accentRed),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.accentBlue),
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                            ),
+                            icon: const Icon(Icons.upload_file, size: 14, color: AppColors.accentBlue),
+                            label: const Text('Load JSON Key File', style: TextStyle(fontSize: 11, color: AppColors.accentBlue)),
+                            onPressed: () => _pickServiceAccountFile(context, ref),
+                          ),
                         ),
-                        icon: const Icon(Icons.upload_file, size: 14, color: AppColors.accentBlue),
-                        label: const Text('Load JSON Key File', style: TextStyle(fontSize: 11, color: AppColors.accentBlue)),
-                        onPressed: () => _pickServiceAccountFile(context, ref),
-                      ),
+                      ],
                     ),
                   ],
                 ],
+
+                const SizedBox(height: 6),
+                // Connect / Connected Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isSuccessfullyConnected ? AppColors.bgInput : AppColors.accentBlue,
+                      foregroundColor: isSuccessfullyConnected ? AppColors.textMuted : Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    icon: Icon(
+                      isSuccessfullyConnected ? Icons.check_circle : Icons.power_settings_new,
+                      size: 14,
+                      color: isSuccessfullyConnected ? AppColors.accentGreen : Colors.white,
+                    ),
+                    label: Text(
+                      isSuccessfullyConnected ? 'Connected' : 'Connect',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: isSuccessfullyConnected
+                        ? null
+                        : () {
+                            ref.read(isConnectedProvider.notifier).state = true;
+                            ref.invalidate(authStateProvider);
+                            ref.invalidate(projectsListProvider);
+                            ref.read(selectedProjectProvider.notifier).state = null;
+                            ref.read(selectedDatabaseProvider.notifier).state = null;
+                            ref.read(selectedCollectionProvider.notifier).state = null;
+                            ref.read(selectedDocumentProvider.notifier).state = null;
+                            ref.read(documentsNotifierProvider.notifier).clearAll();
+                          },
+                  ),
+                ),
               ],
             ),
           ),
+
           const Divider(height: 12),
           // Project Selector Section
           Padding(
@@ -226,6 +488,29 @@ class SidebarExplorer extends ConsumerWidget {
                 const SizedBox(height: 6),
                 projectsAsync.when(
                   data: (projects) {
+                    if (!isConnected || projects.isEmpty) {
+                      return DropdownButtonFormField<GcpProject>(
+                        items: const [],
+                        onChanged: null,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: isConnected ? 'No GCP projects found' : 'Not Authenticated',
+                          hintStyle: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          fillColor: AppColors.bgInput,
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: const BorderSide(color: AppColors.borderColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: const BorderSide(color: AppColors.borderColor),
+                          ),
+                        ),
+                      );
+                    }
                     final validSelectedProject = projects.contains(selectedProject) ? selectedProject : null;
                     return DropdownButtonFormField<GcpProject>(
                       initialValue: validSelectedProject,
@@ -260,25 +545,26 @@ class SidebarExplorer extends ConsumerWidget {
                   );
                 },
                   loading: () => const LinearProgressIndicator(color: AppColors.firebaseGold),
-                  error: (err, _) => Row(
-                    children: [
-                      Expanded(
-                        child: SelectableText(
-                          'Error: $err',
-                          style: const TextStyle(color: AppColors.accentRed, fontSize: 11),
-                        ),
+                  error: (err, _) => DropdownButtonFormField<GcpProject>(
+                    items: const [],
+                    onChanged: null,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'Not Authenticated',
+                      hintStyle: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      fillColor: AppColors.bgInput,
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: AppColors.borderColor),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 14, color: AppColors.accentRed),
-                        tooltip: 'Copy Error Text',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: err.toString()));
-                          AppToast.showInfo(context, 'Project error copied to clipboard');
-                        },
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: const BorderSide(color: AppColors.borderColor),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],

@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import '../core/auth/adc_auth_service.dart';
 
 enum AuthMode {
   adc,
+  gcloudCli,
   serviceAccount,
 }
 
@@ -35,19 +37,43 @@ class ServiceAccountModel {
 
 final authModeProvider = StateProvider<AuthMode>((ref) => AuthMode.adc);
 final serviceAccountProvider = StateProvider<ServiceAccountModel?>((ref) => null);
+final isConnectedProvider = StateProvider<bool>((ref) => false);
 
 final adcAuthServiceProvider = Provider<AdcAuthService>((ref) {
   return AdcAuthService();
 });
 
 final authStateProvider = FutureProvider<AdcAuthResult>((ref) async {
+  final isConnected = ref.watch(isConnectedProvider);
+  if (!isConnected) {
+    return AdcAuthResult(
+      client: http.Client(),
+      accountEmail: 'Not Connected',
+      isSuccess: false,
+    );
+  }
+
   final authMode = ref.watch(authModeProvider);
   final serviceAccount = ref.watch(serviceAccountProvider);
   final authService = ref.watch(adcAuthServiceProvider);
 
-  if (authMode == AuthMode.serviceAccount && serviceAccount != null) {
+  if (authMode == AuthMode.serviceAccount) {
+    if (serviceAccount == null) {
+      return AdcAuthResult(
+        client: http.Client(),
+        accountEmail: 'No Service Account Key',
+        isSuccess: false,
+        errorMessage: 'Please load a Service Account JSON Key file first.',
+      );
+    }
     return authService.authenticateServiceAccount(serviceAccount.jsonContent);
+  }
+
+  if (authMode == AuthMode.gcloudCli) {
+    return authService.authenticateGcloudCli();
   }
 
   return authService.authenticate();
 });
+
+

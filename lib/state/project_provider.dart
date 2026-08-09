@@ -4,6 +4,17 @@ import 'auth_provider.dart';
 import 'service_providers.dart';
 
 final projectsListProvider = FutureProvider<List<GcpProject>>((ref) async {
+  final isConnected = ref.watch(isConnectedProvider);
+  if (!isConnected) {
+    return [];
+  }
+
+  // Wait for authentication to resolve before listing projects
+  final authResult = await ref.watch(authStateProvider.future);
+  if (!authResult.isSuccess) {
+    throw Exception(authResult.errorMessage ?? 'Authentication failed');
+  }
+
   final authMode = ref.watch(authModeProvider);
   final serviceAccount = ref.watch(serviceAccountProvider);
   final service = ref.watch(resourceManagerServiceProvider);
