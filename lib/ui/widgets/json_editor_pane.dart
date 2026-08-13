@@ -363,10 +363,25 @@ class _JsonEditorPaneState extends ConsumerState<JsonEditorPane> {
                   const Icon(Icons.error_outline, size: 16, color: AppColors.accentRed),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
+                    child: SelectableText(
                       _errorMessage!,
-                      style: const TextStyle(fontSize: 12, color: AppColors.accentRed),
+                      style: const TextStyle(fontSize: 12, color: AppColors.accentRed, fontFamily: 'monospace'),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.accentRed,
+                      side: BorderSide(color: AppColors.accentRed.withValues(alpha: 0.5)),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: const Size(60, 28),
+                    ),
+                    icon: const Icon(Icons.copy, size: 12),
+                    label: const Text('Copy Error', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: _errorMessage!));
+                      AppToast.showInfo('Error message copied to clipboard!');
+                    },
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 14, color: AppColors.accentRed),

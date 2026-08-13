@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../main.dart';
 
 class AppToast {
@@ -71,7 +72,7 @@ class AppToast {
               Icon(icon, size: 18, color: Colors.white),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
+                child: SelectableText(
                   message,
                   style: const TextStyle(
                     color: Colors.white,
@@ -80,6 +81,21 @@ class AppToast {
                     letterSpacing: 0.2,
                   ),
                 ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.4)),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: const Size(60, 28),
+                ),
+                icon: const Icon(Icons.copy, size: 12),
+                label: const Text('Copy', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: message));
+                  showInfo('Copied to clipboard!');
+                },
               ),
             ],
           ),

@@ -95,6 +95,79 @@ class _DocumentTreeViewState extends ConsumerState<DocumentTreeView> {
     }
   }
 
+  List<dynamic> _parsePathSegments(String path) {
+    final normalized = path.replaceAll('.[', '.').replaceAll('[', '.').replaceAll(']', '');
+    final parts = normalized.split('.');
+    final result = <dynamic>[];
+    for (final part in parts) {
+      if (part.isEmpty) continue;
+      final intVal = int.tryParse(part);
+      if (intVal != null) {
+        result.add(intVal);
+      } else {
+        result.add(part);
+      }
+    }
+    return result;
+  }
+
+  dynamic _deepCopyJson(dynamic input) {
+    if (input is Map) {
+      return Map<String, dynamic>.from(
+        input.map((k, v) => MapEntry(k.toString(), _deepCopyJson(v))),
+      );
+    } else if (input is List) {
+      return List<dynamic>.from(input.map((v) => _deepCopyJson(v)));
+    }
+    return input;
+  }
+
+  void _setNestedValue(dynamic target, List<dynamic> segments, dynamic newValue) {
+    if (segments.isEmpty) return;
+    dynamic current = target;
+    for (int i = 0; i < segments.length - 1; i++) {
+      final seg = segments[i];
+      if (seg is int && current is List) {
+        current = current[seg];
+      } else if (current is Map<String, dynamic>) {
+        current = current[seg.toString()];
+      }
+    }
+
+    final lastSeg = segments.last;
+    if (current is List) {
+      if (lastSeg is int && lastSeg < current.length) {
+        current[lastSeg] = newValue;
+      } else {
+        current.add(newValue);
+      }
+    } else if (current is Map<String, dynamic>) {
+      current[lastSeg.toString()] = newValue;
+    }
+  }
+
+  void _deleteNestedKey(dynamic target, List<dynamic> segments) {
+    if (segments.isEmpty) return;
+    dynamic current = target;
+    for (int i = 0; i < segments.length - 1; i++) {
+      final seg = segments[i];
+      if (seg is int && current is List) {
+        current = current[seg];
+      } else if (current is Map<String, dynamic>) {
+        current = current[seg.toString()];
+      }
+    }
+
+    final lastSeg = segments.last;
+    if (current is List) {
+      if (lastSeg is int && lastSeg < current.length) {
+        current.removeAt(lastSeg);
+      }
+    } else if (current is Map<String, dynamic>) {
+      current.remove(lastSeg.toString());
+    }
+  }
+
   Future<void> _pickDateTime(BuildContext ctx, TextEditingController controller, Function setDialogState) async {
     final now = DateTime.now();
     final date = await showDatePicker(
@@ -169,10 +242,26 @@ class _DocumentTreeViewState extends ConsumerState<DocumentTreeView> {
     try {
       debugPrint('[DocumentTreeView] Deleting field "$fieldPath"...');
       final service = ref.read(firestoreDataServiceProvider);
-      final updatedDoc = await service.deleteSingleField(
-        documentPath: widget.document.path,
-        fieldPath: fieldPath,
-      );
+      final segments = _parsePathSegments(fieldPath);
+      final hasArray = segments.any((s) => s is int);
+
+      final FirestoreDocumentModel updatedDoc;
+      if (hasArray) {
+        final rootField = segments.first.toString();
+        final docCopy = _deepCopyJson(widget.document.data) as Map<String, dynamic>;
+        _deleteNestedKey(docCopy, segments);
+
+        updatedDoc = await service.updateSingleField(
+          documentPath: widget.document.path,
+          fieldPath: rootField,
+          fieldValue: docCopy[rootField],
+        );
+      } else {
+        updatedDoc = await service.deleteSingleField(
+          documentPath: widget.document.path,
+          fieldPath: fieldPath,
+        );
+      }
 
       ref.read(selectedDocumentProvider.notifier).state = updatedDoc;
       AppToast.showSuccess('Field "$fieldPath" deleted successfully!');
@@ -535,11 +624,27 @@ class _DocumentTreeViewState extends ConsumerState<DocumentTreeView> {
                 try {
                   debugPrint('[DocumentTreeView] Adding field "$fullFieldPath"...');
                   final service = ref.read(firestoreDataServiceProvider);
-                  final updatedDoc = await service.updateSingleField(
-                    documentPath: widget.document.path,
-                    fieldPath: fullFieldPath,
-                    fieldValue: parsedVal,
-                  );
+                  final segments = _parsePathSegments(fullFieldPath);
+                  final hasArray = segments.any((s) => s is int);
+
+                  final FirestoreDocumentModel updatedDoc;
+                  if (hasArray) {
+                    final rootField = segments.first.toString();
+                    final docCopy = _deepCopyJson(widget.document.data) as Map<String, dynamic>;
+                    _setNestedValue(docCopy, segments, parsedVal);
+
+                    updatedDoc = await service.updateSingleField(
+                      documentPath: widget.document.path,
+                      fieldPath: rootField,
+                      fieldValue: docCopy[rootField],
+                    );
+                  } else {
+                    updatedDoc = await service.updateSingleField(
+                      documentPath: widget.document.path,
+                      fieldPath: fullFieldPath,
+                      fieldValue: parsedVal,
+                    );
+                  }
                   ref.read(selectedDocumentProvider.notifier).state = updatedDoc;
                   AppToast.showSuccess('Field "$fullFieldPath" added successfully!');
                 } catch (e) {
@@ -889,11 +994,27 @@ class _DocumentTreeViewState extends ConsumerState<DocumentTreeView> {
                 try {
                   debugPrint('[DocumentTreeView] Updating field "$fieldPath"...');
                   final service = ref.read(firestoreDataServiceProvider);
-                  final updatedDoc = await service.updateSingleField(
-                    documentPath: widget.document.path,
-                    fieldPath: fieldPath,
-                    fieldValue: parsedVal,
-                  );
+                  final segments = _parsePathSegments(fieldPath);
+                  final hasArray = segments.any((s) => s is int);
+
+                  final FirestoreDocumentModel updatedDoc;
+                  if (hasArray) {
+                    final rootField = segments.first.toString();
+                    final docCopy = _deepCopyJson(widget.document.data) as Map<String, dynamic>;
+                    _setNestedValue(docCopy, segments, parsedVal);
+
+                    updatedDoc = await service.updateSingleField(
+                      documentPath: widget.document.path,
+                      fieldPath: rootField,
+                      fieldValue: docCopy[rootField],
+                    );
+                  } else {
+                    updatedDoc = await service.updateSingleField(
+                      documentPath: widget.document.path,
+                      fieldPath: fieldPath,
+                      fieldValue: parsedVal,
+                    );
+                  }
                   ref.read(selectedDocumentProvider.notifier).state = updatedDoc;
                   AppToast.showSuccess('Field "$fieldPath" updated successfully!');
                 } catch (e) {
@@ -1092,7 +1213,25 @@ class _DocumentTreeViewState extends ConsumerState<DocumentTreeView> {
                 const Icon(Icons.error_outline, size: 16, color: AppColors.accentRed),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(_treeError!, style: const TextStyle(color: AppColors.accentRed, fontSize: 11)),
+                  child: SelectableText(
+                    _treeError!,
+                    style: const TextStyle(color: AppColors.accentRed, fontSize: 11, fontFamily: 'monospace'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accentRed,
+                    side: BorderSide(color: AppColors.accentRed.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: const Size(60, 28),
+                  ),
+                  icon: const Icon(Icons.copy, size: 12),
+                  label: const Text('Copy Error', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: _treeError!));
+                    AppToast.showInfo('Error message copied to clipboard!');
+                  },
                 ),
               ],
             ),
